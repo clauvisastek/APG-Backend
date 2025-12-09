@@ -80,6 +80,7 @@ builder.Services.AddScoped<IBusinessUnitAccessService, BusinessUnitAccessService
 builder.Services.AddScoped<ICountryService, CountryService>();
 builder.Services.AddScoped<ICurrencyService, CurrencyService>();
 builder.Services.AddScoped<IClientService, ClientService>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<ICalculatorSettingsService, CalculatorSettingsService>();
 builder.Services.AddScoped<IGlobalSalarySettingsService, GlobalSalarySettingsService>();
 builder.Services.AddScoped<IMarginSimulationService, MarginSimulationService>();

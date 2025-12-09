@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<Country> Countries { get; set; }
     public DbSet<Currency> Currencies { get; set; }
     public DbSet<Client> Clients { get; set; }
+    public DbSet<Project> Projects { get; set; }
     public DbSet<GlobalSalarySettings> GlobalSalarySettings { get; set; }
     public DbSet<ClientMarginSettings> ClientMarginSettings { get; set; }
 
@@ -285,6 +286,79 @@ public class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.ClientId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure Project
+        modelBuilder.Entity<Project>(entity =>
+        {
+            entity.ToTable("Projects");
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.Name)
+                .IsRequired()
+                .HasMaxLength(200);
+            
+            entity.Property(e => e.Code)
+                .IsRequired()
+                .HasMaxLength(50);
+            
+            entity.Property(e => e.Type)
+                .IsRequired()
+                .HasMaxLength(50);
+            
+            entity.Property(e => e.ResponsibleName)
+                .HasMaxLength(200);
+            
+            entity.Property(e => e.Currency)
+                .IsRequired()
+                .HasMaxLength(3);
+            
+            entity.Property(e => e.StartDate)
+                .IsRequired();
+            
+            entity.Property(e => e.EndDate)
+                .IsRequired();
+            
+            entity.Property(e => e.TargetMargin)
+                .IsRequired()
+                .HasPrecision(5, 2);
+            
+            entity.Property(e => e.MinMargin)
+                .IsRequired()
+                .HasPrecision(5, 2);
+            
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasMaxLength(50);
+            
+            entity.Property(e => e.Notes)
+                .HasMaxLength(2000);
+            
+            entity.Property(e => e.YtdRevenue)
+                .HasPrecision(18, 2);
+            
+            entity.Property(e => e.CreatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("GETUTCDATE()");
+            
+            // Unique constraint on Code (case-insensitive)
+            entity.HasIndex(e => e.Code)
+                .IsUnique();
+            
+            entity.HasIndex(e => e.Name);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.StartDate);
+            
+            // Configure relationships
+            entity.HasOne(e => e.Client)
+                .WithMany()
+                .HasForeignKey(e => e.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            
+            entity.HasOne(e => e.BusinessUnit)
+                .WithMany()
+                .HasForeignKey(e => e.BusinessUnitId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 
