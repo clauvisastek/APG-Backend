@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  sqlserver:
+    container_name: apg-sqlserver
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "YourStrong@Passw0rd"
+      # IMPORTANT: Change this password in production and use secrets management!
+      # For production, consider using Docker secrets or Azure Key Vault
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - apg-network
+    restart: unless-stopped
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "YourStrong@Passw0rd" -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  api:
+    container_name: apg-api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: "http://+:80"
+      # Connection string for Docker internal networking
+      # Note: Server uses service name 'sqlserver' instead of 'localhost'
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=APGDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;MultipleActiveResultSets=true"
+      # OpenAI Configuration for Market Trends feature
+      # IMPORTANT: Replace with your actual OpenAI API key
+      OpenAI__ApiKey: "${OPENAI_API_KEY:-}"
+      OpenAI__Model: "${OPENAI_MODEL:-gpt-5-nano}"
+    ports:
+      - "5001:80"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - apg-network
+    restart: unless-stopped
+
+volumes:
+  sqlserver_data:
+    name: apg_sqlserver_data
+
+networks:
+  apg-network:
+    name: apg-network
+    driver: bridge
