@@ -63,37 +63,4 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🔗 [View Application](https://${{ secrets.AZURE_WEBAPP_NAME }}.azurewebsites.net)" >> $GITHUB_STEP_SUMMARY
           echo "📊 [View Logs in Azure Portal](https://portal.azure.com)" >> $GITHUB_STEP_SUMMARY
-                "slotSetting": false
-              },
-              {
-                "name": "OpenAI__ApiKey",
-                "value": "${{ secrets.OPENAI_API_KEY }}",
-                "slotSetting": false
-              },
-              {
-                "name": "OpenAI__Model",
-                "value": "gpt-4o",
-                "slotSetting": false
-              },
-              {
-                "name": "Auth0__Authority",
-                "value": "https://astekcanada.ca.auth0.com/",
-                "slotSetting": false
-              },
-              {
-                "name": "Auth0__Audience",
-                "value": "https://api.apg-astek.com",
-                "slotSetting": false
-              }
-            ]
-          connection-strings-json: |
-            [
-              {
-                "name": "DefaultConnection",
-                "value": "${{ secrets.AZURE_SQL_CONNECTION_STRING }}",
-                "type": "SQLAzure",
-                "slotSetting": false
-              }
-            ]
-        env:
-          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+
