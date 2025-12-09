@@ -40,8 +40,10 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user for the application
-RUN groupadd -r appuser && useradd -r -g appuser appuser
-RUN chown -R appuser:appuser /app
+RUN groupadd -r appuser && useradd -r -g appuser appuser && \
+    mkdir -p /home/appuser && \
+    chown -R appuser:appuser /home/appuser && \
+    chown -R appuser:appuser /app
 
 USER appuser
 
@@ -49,7 +51,7 @@ USER appuser
 COPY --from=publish --chown=appuser:appuser /app/publish .
 
 # Expose port
-EXPOSE 80
+EXPOSE 8080
 
 # Set entry point
 ENTRYPOINT ["dotnet", "APG.API.dll"]
