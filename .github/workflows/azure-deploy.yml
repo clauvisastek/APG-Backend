@@ -1,0 +1,84 @@
+name: Deploy Backend to Azure App Service
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: 'apg-backend-api'  # Will be updated after Azure resource creation
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Publish
+        run: dotnet publish src/APG.API/APG.API.csproj --configuration Release --output ./publish
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./publish
+
+      - name: Configure App Settings
+        uses: azure/appservice-settings@v1
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          app-settings-json: |
+            [
+              {
+                "name": "ASPNETCORE_ENVIRONMENT",
+                "value": "Production",
+                "slotSetting": false
+              },
+              {
+                "name": "OpenAI__ApiKey",
+                "value": "${{ secrets.OPENAI_API_KEY }}",
+                "slotSetting": false
+              },
+              {
+                "name": "OpenAI__Model",
+                "value": "gpt-4o",
+                "slotSetting": false
+              },
+              {
+                "name": "Auth0__Authority",
+                "value": "https://astekcanada.ca.auth0.com/",
+                "slotSetting": false
+              },
+              {
+                "name": "Auth0__Audience",
+                "value": "https://api.apg-astek.com",
+                "slotSetting": false
+              }
+            ]
+          connection-strings-json: |
+            [
+              {
+                "name": "DefaultConnection",
+                "value": "${{ secrets.AZURE_SQL_CONNECTION_STRING }}",
+                "type": "SQLAzure",
+                "slotSetting": false
+              }
+            ]
+        env:
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
