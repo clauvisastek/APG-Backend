@@ -7,47 +7,62 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_WEBAPP_NAME: 'apg-backend-api'  # Will be updated after Azure resource creation
-  DOTNET_VERSION: '8.0.x'
+  DOCKER_IMAGE_NAME: apg-backend
+  REGISTRY: ghcr.io
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     
     steps:
-      - name: Checkout code
+      - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - name: 🔐 Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Restore dependencies
-        run: dotnet restore
+      - name: 🏷️ Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build
-        run: dotnet build --configuration Release --no-restore
+      - name: 🐳 Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
-      - name: Publish
-        run: dotnet publish src/APG.API/APG.API.csproj --configuration Release --output ./publish
-
-      - name: Deploy to Azure Web App
+      - name: 🚀 Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./publish
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE_NAME }}:latest
 
-      - name: Configure App Settings
-        uses: azure/appservice-settings@v1
-        with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          app-settings-json: |
-            [
-              {
-                "name": "ASPNETCORE_ENVIRONMENT",
-                "value": "Production",
+      - name: ✅ Deployment Summary
+        run: |
+          echo "### 🎉 Backend Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Backend URL:** https://${{ secrets.AZURE_WEBAPP_NAME }}.azurewebsites.net" >> $GITHUB_STEP_SUMMARY
+          echo "**Docker Image:** ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 [View Application](https://${{ secrets.AZURE_WEBAPP_NAME }}.azurewebsites.net)" >> $GITHUB_STEP_SUMMARY
+          echo "📊 [View Logs in Azure Portal](https://portal.azure.com)" >> $GITHUB_STEP_SUMMARY
                 "slotSetting": false
               },
               {
