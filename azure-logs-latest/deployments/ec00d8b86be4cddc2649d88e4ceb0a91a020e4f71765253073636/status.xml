@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<deployment>
+  <id>ec00d8b86be4cddc2649d88e4ceb0a91a020e4f71765253073636</id>
+  <author>clauvisastek</author>
+  <deployer>GitHub</deployer>
+  <authorEmail />
+  <message>{"type":"Deployment","sha":"ec00d8b86be4cddc2649d88e4ceb0a91a020e4f7","repoName":"clauvisastek/APG-Backend","actor":"clauvisastek","slotName":"production"}</message>
+  <progress />
+  <status>Success</status>
+  <statusText />
+  <lastSuccessEndTime>2025-12-09T04:04:34.3923908Z</lastSuccessEndTime>
+  <receivedTime>2025-12-09T04:04:34.3923908Z</receivedTime>
+  <startTime>2025-12-09T04:04:34.3923908Z</startTime>
+  <endTime>2025-12-09T04:04:34.3923908Z</endTime>
+  <complete>True</complete>
+  <is_temp>False</is_temp>
+  <is_readonly>True</is_readonly>
+  <buildSummary />
+</deployment>

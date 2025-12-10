@@ -1,0 +1,21 @@
+# Use SDK image for migrations
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS migrations
+
+WORKDIR /src
+
+# Copy project files
+COPY src/APG.Domain/APG.Domain.csproj src/APG.Domain/
+COPY src/APG.Application/APG.Application.csproj src/APG.Application/
+COPY src/APG.Persistence/APG.Persistence.csproj src/APG.Persistence/
+COPY src/APG.API/APG.API.csproj src/APG.API/
+
+# Restore dependencies
+RUN dotnet restore src/APG.API/APG.API.csproj
+
+# Copy everything else
+COPY . .
+
+WORKDIR /src/src/APG.API
+
+# Keep container running
+ENTRYPOINT ["tail", "-f", "/dev/null"]
