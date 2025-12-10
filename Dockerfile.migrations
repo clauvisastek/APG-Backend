@@ -12,6 +12,10 @@ COPY src/APG.API/APG.API.csproj src/APG.API/
 # Restore dependencies
 RUN dotnet restore src/APG.API/APG.API.csproj
 
+# Install EF Core tools
+RUN dotnet tool install --global dotnet-ef --version 8.0.0
+ENV PATH="${PATH}:/root/.dotnet/tools"
+
 # Copy everything else
 COPY . .
 

@@ -140,6 +140,97 @@ public class ProjectService : IProjectService
         _context.Projects.Add(project);
         await _context.SaveChangesAsync();
 
+        // Calculate initial global margin and add to history
+        var initialMarginHistory = new List<GlobalMarginHistoryDto>();
+        if (dto.TeamMembers != null && dto.TeamMembers.Any())
+        {
+            var avgMargin = dto.TeamMembers.Average(tm => tm.GrossMargin);
+            initialMarginHistory.Add(new GlobalMarginHistoryDto
+            {
+                Label = DateTime.UtcNow.ToString("dd/MM/yyyy"),
+                Value = avgMargin
+            });
+        }
+
+        // Process team members - create/update Resources and ProjectResources
+        if (dto.TeamMembers != null && dto.TeamMembers.Any())
+        {
+            foreach (var teamMemberDto in dto.TeamMembers)
+            {
+                // Skip if no email provided
+                var email = teamMemberDto.Email ?? teamMemberDto.Id;
+                if (string.IsNullOrWhiteSpace(email) || !email.Contains("@"))
+                    continue;
+
+                // Parse name to get FirstName and LastName
+                var nameParts = teamMemberDto.Name.Split(' ', 2);
+                var firstName = nameParts.Length > 0 ? nameParts[0] : string.Empty;
+                var lastName = nameParts.Length > 1 ? nameParts[1] : string.Empty;
+
+                // Try to find existing resource by email
+                var resource = await _context.Resources
+                    .FirstOrDefaultAsync(r => r.Email.ToLower() == email.ToLower());
+
+                // If resource doesn't exist, create it
+                if (resource == null)
+                {
+                    resource = new Resource
+                    {
+                        Email = email.ToLower(),
+                        FirstName = firstName,
+                        LastName = lastName,
+                        Name = teamMemberDto.Name,
+                        JobType = teamMemberDto.Role,
+                        DailyCostRate = teamMemberDto.CostRate,
+                        DailySellRate = teamMemberDto.SellRate,
+                        MarginRate = teamMemberDto.GrossMargin,
+                        BusinessUnitId = dto.BusinessUnitId,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    _context.Resources.Add(resource);
+                    await _context.SaveChangesAsync();
+                }
+                else
+                {
+                    // Update existing resource rates if they changed
+                    resource.DailyCostRate = teamMemberDto.CostRate;
+                    resource.DailySellRate = teamMemberDto.SellRate;
+                    resource.MarginRate = teamMemberDto.GrossMargin;
+                    resource.UpdatedAt = DateTime.UtcNow;
+                }
+
+                // Create ProjectResource association
+                var projectResource = new ProjectResource
+                {
+                    ProjectId = project.Id,
+                    ResourceId = resource.Id,
+                    Role = teamMemberDto.Role,
+                    ResourceType = "Employee", // Default, can be enhanced
+                    StartDate = dto.StartDate,
+                    EndDate = dto.EndDate,
+                    DailyCostRate = teamMemberDto.CostRate,
+                    DailySellRate = teamMemberDto.SellRate,
+                    GrossMarginAmount = teamMemberDto.GrossMargin,
+                    GrossMarginPercent = teamMemberDto.GrossMargin,
+                    NetMarginPercent = teamMemberDto.NetMargin,
+                    Status = "Active",
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.ProjectResources.Add(projectResource);
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        // Update GlobalMarginHistoryJson with the initial margin
+        if (initialMarginHistory.Any())
+        {
+            project.GlobalMarginHistoryJson = JsonSerializer.Serialize(initialMarginHistory);
+            await _context.SaveChangesAsync();
+        }
+
         // Reload with related entities
         await _context.Entry(project)
             .Reference(p => p.Client)
@@ -231,7 +322,38 @@ public class ProjectService : IProjectService
         project.Notes = dto.Notes?.Trim();
         project.YtdRevenue = dto.YtdRevenue;
         project.TeamMembersJson = dto.TeamMembers != null ? JsonSerializer.Serialize(dto.TeamMembers) : null;
-        project.GlobalMarginHistoryJson = dto.GlobalMarginHistory != null ? JsonSerializer.Serialize(dto.GlobalMarginHistory) : null;
+        
+        // Update margin history if team members changed
+        if (dto.TeamMembers != null && dto.TeamMembers.Any())
+        {
+            var existingHistory = new List<GlobalMarginHistoryDto>();
+            if (!string.IsNullOrEmpty(project.GlobalMarginHistoryJson))
+            {
+                try
+                {
+                    existingHistory = JsonSerializer.Deserialize<List<GlobalMarginHistoryDto>>(project.GlobalMarginHistoryJson) ?? new List<GlobalMarginHistoryDto>();
+                }
+                catch
+                {
+                    existingHistory = new List<GlobalMarginHistoryDto>();
+                }
+            }
+
+            var newAvgMargin = dto.TeamMembers.Average(tm => tm.GrossMargin);
+            var lastMargin = existingHistory.LastOrDefault();
+            
+            // Only add new point if margin changed significantly (>0.5%)
+            if (lastMargin == null || Math.Abs(lastMargin.Value - newAvgMargin) > 0.5m)
+            {
+                existingHistory.Add(new GlobalMarginHistoryDto
+                {
+                    Label = DateTime.UtcNow.ToString("dd/MM/yyyy HH:mm"),
+                    Value = newAvgMargin
+                });
+                project.GlobalMarginHistoryJson = JsonSerializer.Serialize(existingHistory);
+            }
+        }
+        
         project.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();

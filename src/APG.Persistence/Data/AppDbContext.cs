@@ -22,6 +22,9 @@ public class AppDbContext : DbContext
     public DbSet<Project> Projects { get; set; }
     public DbSet<GlobalSalarySettings> GlobalSalarySettings { get; set; }
     public DbSet<ClientMarginSettings> ClientMarginSettings { get; set; }
+    public DbSet<Resource> Resources { get; set; }
+    public DbSet<ProjectResource> ProjectResources { get; set; }
+    public DbSet<ResourceHistory> ResourceHistories { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -359,6 +362,209 @@ public class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.BusinessUnitId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Configure Resource
+        modelBuilder.Entity<Resource>(entity =>
+        {
+            entity.ToTable("Resources");
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.Name)
+                .IsRequired()
+                .HasMaxLength(400);
+            
+            entity.Property(e => e.FirstName)
+                .IsRequired()
+                .HasMaxLength(200);
+            
+            entity.Property(e => e.LastName)
+                .IsRequired()
+                .HasMaxLength(200);
+            
+            entity.Property(e => e.Email)
+                .IsRequired()
+                .HasMaxLength(250);
+            
+            entity.Property(e => e.JobType)
+                .IsRequired()
+                .HasMaxLength(100);
+            
+            entity.Property(e => e.Seniority)
+                .IsRequired()
+                .HasMaxLength(50);
+            
+            entity.Property(e => e.CurrentClient)
+                .HasMaxLength(200);
+            
+            entity.Property(e => e.CurrentMission)
+                .HasMaxLength(200);
+            
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasMaxLength(50);
+            
+            entity.Property(e => e.DailyCostRate)
+                .IsRequired()
+                .HasPrecision(18, 2);
+            
+            entity.Property(e => e.DailySellRate)
+                .IsRequired()
+                .HasPrecision(18, 2);
+            
+            entity.Property(e => e.MarginRate)
+                .IsRequired()
+                .HasPrecision(5, 2);
+            
+            entity.Property(e => e.Manager)
+                .HasMaxLength(200);
+            
+            entity.Property(e => e.Phone)
+                .HasMaxLength(50);
+            
+            entity.Property(e => e.CreatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("GETUTCDATE()");
+            
+            // Unique constraint on Email (case-insensitive)
+            entity.HasIndex(e => e.Email)
+                .IsUnique();
+            
+            entity.HasIndex(e => e.Name);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.BusinessUnitId);
+            
+            // Configure relationship with BusinessUnit
+            entity.HasOne(e => e.BusinessUnit)
+                .WithMany()
+                .HasForeignKey(e => e.BusinessUnitId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Configure ProjectResource (Many-to-Many junction table)
+        modelBuilder.Entity<ProjectResource>(entity =>
+        {
+            entity.ToTable("ProjectResources");
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.Role)
+                .IsRequired()
+                .HasMaxLength(100);
+            
+            entity.Property(e => e.ResourceType)
+                .IsRequired()
+                .HasMaxLength(50);
+            
+            entity.Property(e => e.DailyCostRate)
+                .IsRequired()
+                .HasPrecision(18, 2);
+            
+            entity.Property(e => e.DailySellRate)
+                .IsRequired()
+                .HasPrecision(18, 2);
+            
+            entity.Property(e => e.GrossMarginAmount)
+                .IsRequired()
+                .HasPrecision(18, 2);
+            
+            entity.Property(e => e.GrossMarginPercent)
+                .IsRequired()
+                .HasPrecision(5, 2);
+            
+            entity.Property(e => e.NetMarginPercent)
+                .IsRequired()
+                .HasPrecision(5, 2);
+            
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasMaxLength(50);
+            
+            entity.Property(e => e.Notes)
+                .HasMaxLength(2000);
+            
+            entity.Property(e => e.CreatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("GETUTCDATE()");
+            
+            // Composite index for querying assignments by project or resource
+            entity.HasIndex(e => new { e.ProjectId, e.ResourceId });
+            entity.HasIndex(e => e.ProjectId);
+            entity.HasIndex(e => e.ResourceId);
+            entity.HasIndex(e => e.Status);
+            
+            // Configure relationships
+            entity.HasOne(e => e.Project)
+                .WithMany()
+                .HasForeignKey(e => e.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasOne(e => e.Resource)
+                .WithMany(r => r.ProjectAssignments)
+                .HasForeignKey(e => e.ResourceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure ResourceHistory
+        modelBuilder.Entity<ResourceHistory>(entity =>
+        {
+            entity.ToTable("ResourceHistories");
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.ResourceId)
+                .IsRequired();
+            
+            entity.Property(e => e.ChangeType)
+                .IsRequired()
+                .HasMaxLength(50);
+            
+            entity.Property(e => e.ChangeDescription)
+                .IsRequired()
+                .HasMaxLength(500);
+            
+            entity.Property(e => e.OldValuesJson)
+                .HasMaxLength(4000);
+            
+            entity.Property(e => e.NewValuesJson)
+                .HasMaxLength(4000);
+            
+            entity.Property(e => e.OldDailyCostRate)
+                .HasPrecision(18, 2);
+            
+            entity.Property(e => e.NewDailyCostRate)
+                .HasPrecision(18, 2);
+            
+            entity.Property(e => e.OldDailySellRate)
+                .HasPrecision(18, 2);
+            
+            entity.Property(e => e.NewDailySellRate)
+                .HasPrecision(18, 2);
+            
+            entity.Property(e => e.OldMarginRate)
+                .HasPrecision(5, 2);
+            
+            entity.Property(e => e.NewMarginRate)
+                .HasPrecision(5, 2);
+            
+            entity.Property(e => e.ImpactNotes)
+                .HasMaxLength(1000);
+            
+            entity.Property(e => e.ChangedBy)
+                .HasMaxLength(200);
+            
+            entity.Property(e => e.ChangedAt)
+                .IsRequired()
+                .HasDefaultValueSql("GETUTCDATE()");
+            
+            // Indexes for querying history
+            entity.HasIndex(e => e.ResourceId);
+            entity.HasIndex(e => e.ChangedAt);
+            entity.HasIndex(e => e.ChangeType);
+            
+            // Configure relationship
+            entity.HasOne(e => e.Resource)
+                .WithMany()
+                .HasForeignKey(e => e.ResourceId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 

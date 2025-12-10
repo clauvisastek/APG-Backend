@@ -173,6 +173,7 @@ public class ProjectUpdateDto
 public class TeamMemberDto
 {
     public string Id { get; set; } = string.Empty;
+    public string? Email { get; set; } // Email for resource uniqueness
     public string Name { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
     public decimal CostRate { get; set; }
